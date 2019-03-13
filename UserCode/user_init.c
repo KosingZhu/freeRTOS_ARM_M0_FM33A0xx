@@ -1,4 +1,7 @@
-#include "define_all.h"  
+
+#include "define_all.h"
+#include "general.h"
+
 
 //cpu滴答定时器配置(软件延时用)
 void Init_SysTick(void)
@@ -63,7 +66,7 @@ unsigned char CheckSysReg( __IO uint32_t *RegAddr, uint32_t Value )
 }
 
 //查询NVIC寄存器对应向量号中断是否打开
-//1 打开
+// 1 打开
 //0 关闭
 unsigned char CheckNvicIrqEn( IRQn_Type IRQn )
 {
@@ -626,30 +629,48 @@ void LED0_Flash(uint08 Times)
 }
 
 void Init_System(void)
-{		
-	/*基础系统配置*/
+{	
+
+/*基础系统配置*/
     __disable_irq();			//关闭全局中断使能
     IWDT_Init();				//系统看门狗设置
     IWDT_Clr();  				//清系统看门狗	
 	
 	Init_SysTick();				//cpu滴答定时器配置(软件延时用)	
-	TicksDelayMs( 10, NULL );	//软件延时,系统上电后不要立刻将时钟切换为非RCHF8M，也不要立刻进休眠否则可能导致无法下载程序
+	TicksDelayMs(10, NULL);	//软件延时,系统上电后不要立刻将时钟切换为非RCHF8M，也不要立刻进休眠否则可能导致无法下载程序
 	
 	Init_SysClk_Gen();			//系统时钟配置
 	RCC_Init_RCHF_Trim(clkmode);//RCHF振荡器校准值载入(芯片复位后自动载入8M的校准值)
 	
-	/*外设初始化配置*/
 	Init_Pad_Io();				//IO口输出寄存器初始状态配置
 	Close_None_GPIO_80pin();    //关闭80脚芯片不支持的IO
 	Close_AllIO_GPIO_80pin();   //关闭全部IO
-	
-	/*用户初始化代码*/
+/*end基础系统配置*/
+
+/**基础设备初始化**/
+
+	TimerInit(ETIM4, 4);
+
+	//uart
+	UART_INIT_STRU init;
+
+#ifdef	DEBUG 
+	init.UART_BaudRate = 9600;
+	init.UART_DataLength = 8;
+	init.UART_Parity = EVEN;
+	init.UART_RxTxDfl = 3;
+	init.UART_StopBits = 1;
+	myUartInit(UART4, &init);//调试串口	
+#endif
+
+/**end基础设备初始化**/
+
 	Init_IO();
-	
+
 	/*准备进入主循环*/
-	TicksDelayMs( 100, NULL );	//软件延时
-	
-	
-	LED0_ON;
-	__enable_irq();				//打开全局中断使能
+	TicksDelayMs(100, NULL);	//软件延时	
+	LED_Flash(16, ALARM_R_);
+	//__enable_irq();				//打开全局中断使能//在调度器启动之前关掉全局中断
 }
+
+

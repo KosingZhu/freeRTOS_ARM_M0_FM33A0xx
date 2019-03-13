@@ -4,6 +4,12 @@
 #include "define_all.h"  
 #include <string.h>
 
+#include "FreeRTOS.h"
+#include "projdefs.h"
+#include "portable.h"
+#include "task.h"
+#include "queue.h"
+
 
 
 void TASK_LED1_Blinky(void *gh);

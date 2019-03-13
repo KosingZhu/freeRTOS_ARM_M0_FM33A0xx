@@ -44,16 +44,21 @@
 
 /* Standard includes. */
 #include "string.h"
+#include <stdarg.h>
 
 /* FreeRTOS includes. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "event_groups.h"
+#include "stream_buffer.h"
+#include "message_buffer.h"
 
 /* Demo application include. */
 #include "define_all.h"  
 #include "user_task.h"
-
+#include "timers.h"
+#include "general.h"
 
 
 /* Set mainCREATE_SIMPLE_BLINKY_DEMO_ONLY to one to run the simple blinky demo,
@@ -73,19 +78,322 @@ extern void SystemCoreClockUpdate( void );
 
 /*-----------------------------------------------------------*/
 
+QueueHandle_t xQueue1 = NULL, xQueue2 = NULL;
+QueueSetHandle_t xQueueSet = NULL;
+BaseType_t ret;
+extern uint08 string[PRINT_LEN];
+
+QueueHandle_t xIntegerQueue;
+EventGroupHandle_t xEventGroup;
+
+
+
+SemaphoreHandle_t printMutex;
+uint32 myprintf(uint08 *format, ...)
+{	
+	va_list Argument;
+	uint32 slen;
+		
+	va_start(Argument, format);
+taskENTER_CRITICAL();
+	//xSemaphoreTake(printMutex, portMAX_DELAY);
+	//vTaskSuspendAll();
+
+	_vsnprintf(string, sizeof(string), format, Argument);
+	va_end(Argument);
+	slen = strlen(string);
+	uart_send(PRINTF_UART, string, slen);
+
+taskEXIT_CRITICAL();
+	//xSemaphoreGive(printMutex);
+	//xTaskResumeAll();
+
+	return slen;
+}
+
+
+
+void oneShot( TimerHandle_t xTimer )
+{
+	sprintf(string, "say hello oneshot\n");
+	uart_send(PRINTF_UART, string, strlen(string));
+	
+}
+
+
+void autoReload(TimerHandle_t xtimer)
+{
+	static uint08 cnt = 0;
+
+	cnt = (uint08)pvTimerGetTimerID(xtimer);
+	vTimerSetTimerID(xtimer, (void*)++cnt);
+	sprintf(string, "say hello AutoReload cnt:%d\n", cnt);
+	uart_send(PRINTF_UART, string, strlen(string));
+	if(cnt == 5)
+	{
+		xTimerChangePeriod(xtimer, pdMS_TO_TICKS(200), 0);
+	}
+	else if(cnt == 10)
+	{
+		xTimerStop(xtimer, 0);
+	sprintf(string, "stop timer\n");
+	uart_send(PRINTF_UART, string, strlen(string));		
+	}
+	
+}
+
+
+void interruptHandle(void* para1, uint32_t para2)
+{
+	//sprintf(string, "say in handle:%d\n", para2);
+	//uart_send(PRINTF_UART, string, strlen(string));
+	
+
+	return;
+}
+
+
+extern void vhandleTask(void *P);
+extern void vPeriodicTask(void *P);
+SemaphoreHandle_t semaphore; 
+BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+
+#define task1bit	(0x01<<0)
+#define task2bit	(0x01<<1)
+#define task3bit 	(0x01<<2)
+
+
+void vhandleTask(void *p)
+{
+	uint08 cnt = 0;
+	uint32_t value;
+	uint32 maskbit = (task1bit|task2bit|task3bit);
+	UBaseType_t taskNum;
+	TaskStatus_t taskArr[10];
+	uint32_t pulTotalRunTime;
+	uint08 str[30];
+		
+	for(;;)
+	{
+		IWDT_Clr();
+
+
+		value = xMessageBufferReceive((MessageBufferHandle_t)*(MessageBufferHandle_t**)p, str, sizeof(str), portMAX_DELAY);
+		myprintf("p:0x%p, value:%d, str:%s\n", p, value, str);
+		
+/*	
+		taskNum = uxTaskGetNumberOfTasks();
+		myprintf("taskNum:%d\n", taskNum);
+
+		taskNum = uxTaskGetSystemState(taskArr, 10, &pulTotalRunTime);
+		myprintf("TRunTime:%d\n", pulTotalRunTime);
+		if(taskNum != 0)
+		{
+			for(uint08 i = 0; i < taskNum; i++)
+			{
+				myprintf("stackBase:0x%p, handle:0x%p,name:%s,runtime:%d,priority:%d, curPr:%d, state:%d,reS:%d\n",\
+	taskArr[i].pxStackBase, taskArr[i].xHandle, taskArr[i].pcTaskName, taskArr[i].ulRunTimeCounter, taskArr[i].uxBasePriority,\
+	taskArr[i].uxCurrentPriority, taskArr[i].eCurrentState,  taskArr[i].usStackHighWaterMark\
+						);
+			}			
+		}
+
+		value = ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+		if(value != 0)
+		{
+			myprintf("get value:%d\n", value);
+		}
+		//vTaskDelay(pdMS_TO_TICKS(500));
+
+	
+		myprintf("\n-------------read bit start----------------\n");
+		value = xEventGroupWaitBits(xEventGroup, maskbit, pdTRUE, pdTRUE, portMAX_DELAY);
+
+		if(value&task1bit)
+		{
+			myprintf("task1 happen:%d\n", value);
+		}
+
+		if(value&task2bit)
+		{
+			myprintf("task2 happen:%d\n", value);			
+		}
+
+		if(value&task3bit)
+		{
+			myprintf("task3 happen:%d\n", value);
+		}
+*/		
+		//myprintf("\n-------------read bit end----------------\n");
+
+		//xSemaphoreTake(semaphore, portMAX_DELAY);
+		//cnt = uxSemaphoreGetCount(semaphore);
+		
+		//cnt = xQueueReceive(xIntegerQueue, &value, 0);
+		//if(cnt != errQUEUE_EMPTY)
+		//{
+		//taskENTER_CRITICAL();
+		//sprintf(string, "catch a interupt:%d\n", value);
+		//uart_send(PRINTF_UART, string, strlen(string));
+		//taskEXIT_CRITICAL();
+		//myprintf("catch a interupt:%d\n", (uint32)p);
+		//}
+		//vTaskDelay(pdMS_TO_TICKS(100));
+	}
+	return;
+}
+
+
+
+void vPeriodicTask(void *p)
+{
+	EventBits_t ret;
+	uint08 *str = "hello world!";
+	uint08 len;
+
+	for(;;)
+	{
+		IWDT_Clr();
+
+		len = xMessageBufferSend((MessageBufferHandle_t)*(MessageBufferHandle_t**)p, str, strlen(str)+1, 0);
+		myprintf("send p:0x%p, len:%d--%s\n", p, len, str);
+
+		//xTaskNotifyGive((TaskHandle_t)p);
+
+		//myprintf("\n-------------set bit start-------------------\n");
+		//xEventGroupSync(xEventGroup, (task1bit|task2bit), (task1bit|task2bit|task3bit), portMAX_DELAY);
+
+		//ret = xEventGroupSetBits( xEventGroup,  task1bit);
+		//myprintf("set bit1:%d\n", ret);
+
+		//ret = xEventGroupSetBits(xEventGroup, task2bit);
+		//myprintf("set bit2:%d\n", ret);
+		
+		//sprintf(string, "i just output\n");
+		//uart_send(PRINTF_UART, string, strlen(string));
+		//myprintf("\n-------------set bit end-------------------\n");
+
+		//TicksDelayMs( 200, NULL );//软件延时		
+		 //vTaskDelay(pdMS_TO_TICKS(300));	
+	}
+	
+	return;
+}
+
+
+
+
 int main( void )
 {
+	uint32 flag;
+	TaskHandle_t taskH;
+	StreamBufferHandle_t buff;
+	MessageBufferHandle_t mes;
+
 	/* Prepare the hardware to run this demo. */
 	IWDT_Clr();
 	Init_System();			//系统初始化 
 
-	xTaskCreate(TASK_LED1_Blinky,"led",1000,NULL,1,NULL);
+	//semaphore = xSemaphoreCreateBinary();
+	//semaphore = xSemaphoreCreateCounting(5, 0);
+	//printMutex = xSemaphoreCreateMutex();
+	//xIntegerQueue = xQueueCreate( 100, sizeof(uint32_t) );
+	//xEventGroup = xEventGroupCreate();
+
+
+
+	//buff = xStreamBufferCreate(20, 0);
+	mes = xMessageBufferCreate(20);
+
+	if(mes != NULL)
+	{
+		myprintf("mes:%p\n", mes);
+	}
+
+	flag = readRSTFLAG();
+	sprintf(string, "flag:%d\n", flag);
+	uart_send(PRINTF_UART, string, strlen(string));
+	clrRSFLAG(0);
+
+	myprintf("%s,%d\n", __FILE__, __LINE__);
+
+	//if(semaphore != NULL)
+	{
+		//xTaskCreate(vPeriodicTask,   "Periodic2", 100, (void*)taskH, 3, NULL );
+		xTaskCreate(vhandleTask,   "Handler", 400, (void*)&mes, 3, &taskH );
+		xTaskCreate(vPeriodicTask, "Periodic", 100, (void*)&mes, 3, NULL);
+	}
 	
-	xTaskCreate(TASK_LED2_Blinky,"led1",1000,NULL,1,NULL);
+#if 0
+	xQueue1 = xQueueCreate(2, sizeof(char*));
+	xQueue2 = xQueueCreate(2, sizeof(char*));
+	xQueueSet = xQueueCreateSet(2*2);
+
+	xQueueAddToSet(xQueue1, xQueueSet);
+	xQueueAddToSet(xQueue2, xQueueSet);
 	
-	
+	//if(xQueue != NULL)
+	{
+		xTaskCreate(TASK_LED2_Blinky,"send1", 200, (void*)100, 2, NULL);
+		xTaskCreate(TASK_LED2_Blinky,"send2", 200, (void*)200, 2, NULL);
+		xTaskCreate(TASK_LED1_Blinky,"rec", 200, NULL, 3, NULL);
+	}
+	//xTaskCreate(TASK_LED1_Blinky,"led",200,NULL,2,NULL);
+	//xTaskCreate(TASK_LED2_Blinky,"led1",200,NULL,1,NULL);
+
+
+	flag = readRSTFLAG();
+	sprintf(string, "flag:%d\n", flag);
+	uart_send(PRINTF_UART, string, strlen(string));
+	clrRSFLAG(0);
+
+
+#define mainONE_SHOT_TIMER_PERIOD pdMS_TO_TICKS( 3333 )
+#define mainAUTO_RELOAD_TIMER_PERIOD pdMS_TO_TICKS( 500 )
+
+
+	TimerHandle_t timer1, timer2;
+	BaseType_t ret1, ret2;
+
+	timer1 = xTimerCreate("oneShot", mainONE_SHOT_TIMER_PERIOD,
+								pdFALSE,
+								NULL,
+								oneShot);
+
+	timer2 = xTimerCreate("AutoReload", mainAUTO_RELOAD_TIMER_PERIOD,
+								pdPASS,
+								NULL,
+								autoReload);
+
+	if(timer1 == NULL || timer2 == NULL)
+	{
+		while(1)
+		{
+			LED_Flash(8, ALARM_R_);
+		}
+	}
+
+	ret1 = xTimerStart(timer1, 0);
+	ret2 = xTimerStart(timer2, 0);
+	if(ret1 == pdFALSE || ret2 == pdFALSE)
+	{
+		while(1)
+		{
+			LED_Flash(8, ALARM_R_);
+		}
+	}
+#endif
+
 	vTaskStartScheduler();
-	
+
+	for(;;)
+	{
+/*heap memory overflow*/
+		//LED_Flash(8, ALARM_R_);
+		//IWDT_Clr();
+	}
+	return 0;
 }
 /*-----------------------------------------------------------*/
 
@@ -108,6 +416,7 @@ void vApplicationMallocFailedHook( void )
 }
 /*-----------------------------------------------------------*/
 
+extern uint32 uIDLERunCount;
 void vApplicationIdleHook( void )
 {
 	/* vApplicationIdleHook() will only be called if configUSE_IDLE_HOOK is set
@@ -119,6 +428,8 @@ void vApplicationIdleHook( void )
 	important that vApplicationIdleHook() is permitted to return to its calling
 	function, because it is the responsibility of the idle task to clean up
 	memory allocated by the kernel to any task that has since been deleted. */
+	uIDLERunCount++;
+	return;
 }
 /*-----------------------------------------------------------*/
 
@@ -132,6 +443,7 @@ void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 	function is called if a stack overflow is detected. */
 	taskDISABLE_INTERRUPTS();
 	for( ;; );
+		//softReset();
 }
 /*-----------------------------------------------------------*/
 

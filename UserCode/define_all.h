@@ -1,6 +1,19 @@
 #ifndef	__DEFINEALL_H__
 #define __DEFINEALL_H__
 
+
+#include <stdint.h>
+
+
+typedef uint8_t		uint08;
+typedef uint16_t	uint16;
+typedef uint32_t	uint32;
+typedef int8_t		int08;
+typedef int16_t		int16;
+typedef int32_t		int32;
+
+
+
 //定义常量, 常数
 
 //系统时钟默认使用RCHF
@@ -37,12 +50,7 @@ typedef union
     unsigned char bit7:1;
   }Bit;
 }B08_Bit;
-#define	uint08 uint8_t
-#define	uint16 uint16_t
-#define uint32 uint32_t
-#define	int08 int8_t		
-#define	int16 int16_t
-#define	int32 int32_t
+
 
 /*功能IO宏定义*/
 #define LED0_GPIO		GPIOD
@@ -97,7 +105,6 @@ typedef union
 #include "FM33A0XX.h"
 #include "fm33a0xx_include_all.h"
 #include <stdio.h>
-#include <stdint.h>
 #include <string.h>
 #include "bintohex.h"
 #include "user_init.h"
