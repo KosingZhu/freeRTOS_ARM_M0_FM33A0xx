@@ -102,6 +102,7 @@ StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t px
 }
 /*-----------------------------------------------------------*/
 
+
 static void prvTaskExitError( void )
 {
 	/* A function that implements a task must not exit or attempt to return to
@@ -127,12 +128,13 @@ __asm void prvPortStartFirstTask( void )
 {
 	extern pxCurrentTCB;
 
-	PRESERVE8
+	PRESERVE8/*编译指示:预留8字节的栈对齐*/
 
 	/* The MSP stack is not reset as, unlike on M3/4 parts, there is no vector
 	table offset register that can be used to locate the initial stack value.
 	Not all M0 parts have the application vector table at address 0. */
 
+	/*将当前的TCB地址保存到R3*/
 	ldr	r3, =pxCurrentTCB	/* Obtain location of pxCurrentTCB. */
 	ldr r1, [r3]
 	ldr r0, [r1]			/* The first item in pxCurrentTCB is the task top of stack. */
@@ -146,6 +148,7 @@ __asm void prvPortStartFirstTask( void )
 	pop {r3}				/* The return address is now in r3. */
 	pop {r2}				/* Pop and discard the XPSR. */
 	cpsie i					/* The first task has its context and interrupts can be enabled. */
+	/*跳转到当前任务*/
 	bx r3					/* Finally, jump to the user defined task code. */
 
 	ALIGN

@@ -1268,6 +1268,9 @@ BaseType_t xTimerGenericCommand( TimerHandle_t xTimer, const BaseType_t xCommand
 	UBaseType_t uxTimerGetTimerNumber( TimerHandle_t xTimer ) PRIVILEGED_FUNCTION;
 #endif
 
+extern void feedDog(void);
+
+
 #ifdef __cplusplus
 }
 #endif

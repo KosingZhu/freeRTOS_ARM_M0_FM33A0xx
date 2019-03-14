@@ -37,7 +37,7 @@ typedef enum
 
 typedef enum
 {
-	Seven7Bit,		//7位数据不支奇偶校验位
+	Seven7Bit=7,		//7位数据不支奇偶校验位
 	Eight8Bit,
 	Nine9Bit		//9位数据不支持奇偶校验位
 	

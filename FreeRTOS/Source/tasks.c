@@ -39,6 +39,9 @@ task.h is included from an application file. */
 #include "task.h"
 #include "timers.h"
 #include "stack_macros.h"
+#include "projdefs.h"
+
+
 
 /* Lint e961 and e750 are suppressed as a MISRA exception justified because the
 MPU ports require MPU_WRAPPERS_INCLUDED_FROM_API_FILE to be defined for the
@@ -268,6 +271,7 @@ to its original value when it is released. */
  */
 typedef struct tskTaskControlBlock
 {
+
 	volatile StackType_t	*pxTopOfStack;	/*< Points to the location of the last item placed on the tasks stack.  THIS MUST BE THE FIRST MEMBER OF THE TCB STRUCT. */
 
 	#if ( portUSING_MPU_WRAPPERS == 1 )
@@ -277,6 +281,7 @@ typedef struct tskTaskControlBlock
 	ListItem_t			xStateListItem;	/*< The list that the state list item of a task is reference from denotes the state of that task (Ready, Blocked, Suspended ). */
 	ListItem_t			xEventListItem;		/*< Used to reference a task from an event list. */
 	UBaseType_t			uxPriority;			/*< The priority of the task.  0 is the lowest priority. */
+	/*任务栈指针*/	
 	StackType_t			*pxStack;			/*< Points to the start of the stack. */
 	char				pcTaskName[ configMAX_TASK_NAME_LEN ];/*< Descriptive name given to the task when created.  Facilitates debugging only. */ /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 
@@ -348,6 +353,7 @@ which static variables must be declared volatile. */
 PRIVILEGED_DATA TCB_t * volatile pxCurrentTCB = NULL;
 
 /* Lists for ready and blocked tasks. --------------------*/
+/*每个对应的优先级单独对应着一个优先级链表*/
 PRIVILEGED_DATA static List_t pxReadyTasksLists[ configMAX_PRIORITIES ];/*< Prioritised ready tasks. */
 PRIVILEGED_DATA static List_t xDelayedTaskList1;						/*< Delayed tasks. */
 PRIVILEGED_DATA static List_t xDelayedTaskList2;						/*< Delayed tasks (two lists are used - one for delays that have overflowed the current tick count. */
@@ -732,11 +738,11 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 	BaseType_t xTaskCreate(	TaskFunction_t pxTaskCode,
 							const char * const pcName,		/*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 							const configSTACK_DEPTH_TYPE usStackDepth,
-							void * const pvParameters,
+							void * const pvParameters,/*pxTaskCode的参数*/
 							UBaseType_t uxPriority,
 							TaskHandle_t * const pxCreatedTask )/*一个用户指针，用于接收task任务的属性信息*/
 	{
-	TCB_t *pxNewTCB;
+	TCB_t *pxNewTCB;//任务控制块结构体
 	BaseType_t xReturn;
 
 		/* If the stack grows down then allocate the stack then the TCB so the stack
@@ -766,7 +772,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		}
 		#else /* portSTACK_GROWTH */
 		{
-		StackType_t *pxStack;
+		StackType_t *pxStack;//任务的栈空间
 
 			/* Allocate space for the stack used by the task being created. */
 			pxStack = ( StackType_t * ) pvPortMalloc( ( ( ( size_t ) usStackDepth ) * sizeof( StackType_t ) ) ); /*lint !e961 MISRA exception as the casts are only redundant for some ports. */
@@ -805,8 +811,9 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 			}
 			#endif /* configSUPPORT_STATIC_ALLOCATION */
 
+			/*初始化TCB成员和初始化任务栈空间pxStack*/
 			prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, pxCreatedTask, pxNewTCB, NULL );
-			prvAddNewTaskToReadyList( pxNewTCB );
+			prvAddNewTaskToReadyList( pxNewTCB );//添加新建的任务到就绪链表
 			xReturn = pdPASS;
 		}
 		else
@@ -858,9 +865,10 @@ UBaseType_t x;
 	grows from high memory to low (as per the 80x86) or vice versa.
 	portSTACK_GROWTH is used to make the result positive or negative as required
 	by the port. */
-	#if( portSTACK_GROWTH < 0 )
+	#if( portSTACK_GROWTH < 0 )//栈向低地址生长
 	{
 		pxTopOfStack = pxNewTCB->pxStack + ( ulStackDepth - ( uint32_t ) 1 );
+		/*初始化栈指针的值，满足栈对齐要求*/		
 		pxTopOfStack = ( StackType_t * ) ( ( ( portPOINTER_SIZE_TYPE ) pxTopOfStack ) & ( ~( ( portPOINTER_SIZE_TYPE ) portBYTE_ALIGNMENT_MASK ) ) ); /*lint !e923 MISRA exception.  Avoiding casts between pointers and integers is not practical.  Size differences accounted for using portPOINTER_SIZE_TYPE type. */
 
 		/* Check the alignment of the calculated top of stack is correct. */
@@ -890,7 +898,7 @@ UBaseType_t x;
 	/* Store the task name in the TCB. */
 	for( x = ( UBaseType_t ) 0; x < ( UBaseType_t ) configMAX_TASK_NAME_LEN; x++ )
 	{
-		pxNewTCB->pcTaskName[ x ] = pcName[ x ];
+		pxNewTCB->pcTaskName[ x ] = pcName[ x ];//保存任务名称
 
 		/* Don't copy all configMAX_TASK_NAME_LEN if the string is shorter than
 		configMAX_TASK_NAME_LEN characters just in case the memory after the
@@ -911,7 +919,7 @@ UBaseType_t x;
 
 	/* This is used as an array index so must ensure it's not too large.  First
 	remove the privilege bit if one is present. */
-	if( uxPriority >= ( UBaseType_t ) configMAX_PRIORITIES )
+	if( uxPriority >= ( UBaseType_t ) configMAX_PRIORITIES )//priority作为数组索引，不能让数组越界
 	{
 		uxPriority = ( UBaseType_t ) configMAX_PRIORITIES - ( UBaseType_t ) 1U;
 	}
@@ -928,13 +936,13 @@ UBaseType_t x;
 	}
 	#endif /* configUSE_MUTEXES */
 
-	vListInitialiseItem( &( pxNewTCB->xStateListItem ) );
-	vListInitialiseItem( &( pxNewTCB->xEventListItem ) );
+	vListInitialiseItem( &( pxNewTCB->xStateListItem ) );//初始化任务状态链表
+	vListInitialiseItem( &( pxNewTCB->xEventListItem ) );//初始化事件链表
 
 	/* Set the pxNewTCB as a link back from the ListItem_t.  This is so we can get
-	back to	the containing TCB from a generic item in a list. */
+	back to	the containing TCB from a generic item in a list. */	
+	//将任务控制块(pxNewTCB)挂在xStateListItem链表中，以便能够从链表那边回到任务控制块
 	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xStateListItem ), pxNewTCB );
-
 	/* Event lists are always in priority order. */
 	listSET_LIST_ITEM_VALUE( &( pxNewTCB->xEventListItem ), ( TickType_t ) configMAX_PRIORITIES - ( TickType_t ) uxPriority ); /*lint !e961 MISRA exception as the casts are only redundant for some ports. */
 	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xEventListItem ), pxNewTCB );
@@ -1015,7 +1023,7 @@ UBaseType_t x;
 	{
 		/* Pass the handle out in an anonymous way.  The handle can be used to
 		change the created task's priority, delete the created task, etc.*/
-		*pxCreatedTask = ( TaskHandle_t ) pxNewTCB;
+		*pxCreatedTask = ( TaskHandle_t ) pxNewTCB;//将TCB送回调用者
 	}
 	else
 	{
@@ -1042,6 +1050,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 				/* This is the first task to be created so do the preliminary
 				initialisation required.  We will not recover if this call
 				fails, but we will report the failure. */
+				//如果当前的任务是系统的第一个任务，那么需要初始化系统的所有任务链表
 				prvInitialiseTaskLists();
 			}
 			else
@@ -1054,7 +1063,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 			/* If the scheduler is not already running, make this task the
 			current task if it is the highest priority task to be created
 			so far. */
-			if( xSchedulerRunning == pdFALSE )
+			if( xSchedulerRunning == pdFALSE )//调度器没有运行
 			{
 				if( pxCurrentTCB->uxPriority <= pxNewTCB->uxPriority )
 				{
@@ -1071,7 +1080,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 			}
 		}
 
-		uxTaskNumber++;
+		uxTaskNumber++;//系统任务数+1
 
 		#if ( configUSE_TRACE_FACILITY == 1 )
 		{
@@ -1081,18 +1090,18 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 		#endif /* configUSE_TRACE_FACILITY */
 		traceTASK_CREATE( pxNewTCB );
 
-		prvAddTaskToReadyList( pxNewTCB );
+		prvAddTaskToReadyList( pxNewTCB );//把当前任务加入就绪任务列表
 
 		portSETUP_TCB( pxNewTCB );
 	}
 	taskEXIT_CRITICAL();
 
-	if( xSchedulerRunning != pdFALSE )
+	if( xSchedulerRunning != pdFALSE )//调度器正在运行
 	{
 		/* If the created task is of a higher priority than the current task
 		then it should run now. */
 		if( pxCurrentTCB->uxPriority < pxNewTCB->uxPriority )
-		{
+		{//优先级高于当前的正在运行的任务,则立即运行//请求一个上下文切换
 			taskYIELD_IF_USING_PREEMPTION();
 		}
 		else
@@ -1929,7 +1938,7 @@ BaseType_t xReturn;
 			xReturn = pdFAIL;
 		}
 	}
-	#else//任务堆栈动态分布的情况下
+	#else//任务堆栈动态分布的情况下//创建idle任务
 	{
 		/* The Idle task is being created using dynamically allocated RAM. */
 		xReturn = xTaskCreate(	prvIdleTask,
@@ -1982,7 +1991,7 @@ BaseType_t xReturn;
 
 		xNextTaskUnblockTime = portMAX_DELAY;
 		xSchedulerRunning = pdTRUE;
-		xTickCount = ( TickType_t ) 0U;
+		xTickCount = ( TickType_t ) 0U;//系统滴答时间清零
 
 		/* If configGENERATE_RUN_TIME_STATS is defined then the following
 		macro must be defined to configure the timer/counter used to generate
@@ -1994,7 +2003,7 @@ BaseType_t xReturn;
 
 		/* Setting up the timer tick is hardware specific and thus in the
 		portable interface. */
-		if( xPortStartScheduler() != pdFALSE )
+		if( xPortStartScheduler() != pdFALSE )//系统真正运行起来的地方
 		{
 			/* Should not reach here as if the scheduler is running the
 			function will not return. */
@@ -3332,8 +3341,10 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )//idleTask的实现
 			{
 				mtCOVERAGE_TEST_MARKER();
 			}
+			
 		}
 		#endif /* configUSE_TICKLESS_IDLE */
+		feedDog();
 	}
 }
 /*-----------------------------------------------------------*/

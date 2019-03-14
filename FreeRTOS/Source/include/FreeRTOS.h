@@ -165,7 +165,7 @@ extern "C" {
 #endif
 
 #ifndef INCLUDE_xTimerPendFunctionCall
-	#define INCLUDE_xTimerPendFunctionCall 0
+	#define INCLUDE_xTimerPendFunctionCall 1
 #endif
 
 #ifndef INCLUDE_xTaskGetSchedulerState
@@ -695,6 +695,18 @@ extern "C" {
 #if ( configGENERATE_RUN_TIME_STATS == 1 )
 
 	#ifndef portCONFIGURE_TIMER_FOR_RUN_TIME_STATS
+	//#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS 		1
+	#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()
+	#endif  //portCONFIGURE_TIMER_FOR_RUN_TIME_STATS
+
+	#ifndef portGET_RUN_TIME_COUNTER_VALUE
+	//#define portGET_RUN_TIME_COUNTER_VALUE 1
+	extern volatile uint32_t	waitResponseTimer;
+	#define portGET_RUN_TIME_COUNTER_VALUE()	waitResponseTimer
+	#endif	//portGET_RUN_TIME_COUNTER_VALUE
+
+	
+	#ifndef portCONFIGURE_TIMER_FOR_RUN_TIME_STATS
 		#error If configGENERATE_RUN_TIME_STATS is defined then portCONFIGURE_TIMER_FOR_RUN_TIME_STATS must also be defined.  portCONFIGURE_TIMER_FOR_RUN_TIME_STATS should call a port layer function to setup a peripheral timer/counter that can then be used as the run time counter time base.
 	#endif /* portCONFIGURE_TIMER_FOR_RUN_TIME_STATS */
 
@@ -707,7 +719,8 @@ extern "C" {
 #endif /* configGENERATE_RUN_TIME_STATS */
 
 #ifndef portCONFIGURE_TIMER_FOR_RUN_TIME_STATS
-	#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()
+//	void vSetupTimerForRunTimeStats(void);
+	#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()// vSetupTimerForRunTimeStats()
 #endif
 
 #ifndef configUSE_MALLOC_FAILED_HOOK
@@ -1165,4 +1178,6 @@ typedef StaticStreamBuffer_t StaticMessageBuffer_t;
 #endif
 
 #endif /* INC_FREERTOS_H */
+
+
 

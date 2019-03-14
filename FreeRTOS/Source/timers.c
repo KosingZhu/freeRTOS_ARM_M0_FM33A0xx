@@ -38,6 +38,7 @@ task.h is included from an application file. */
 #include "queue.h"
 #include "timers.h"
 
+
 #if ( INCLUDE_xTimerPendFunctionCall == 1 ) && ( configUSE_TIMERS == 0 )
 	#error configUSE_TIMERS must be set to 1 to make the xTimerPendFunctionCall() function available.
 #endif
@@ -499,7 +500,7 @@ Timer_t * const pxTimer = ( Timer_t * ) listGET_OWNER_OF_HEAD_ENTRY( pxCurrentTi
 }
 /*-----------------------------------------------------------*/
 
-static void prvTimerTask( void *pvParameters )
+static void prvTimerTask( void *pvParameters )//系统定时器任务处理
 {
 TickType_t xNextExpireTime;
 BaseType_t xListWasEmpty;
@@ -531,6 +532,7 @@ BaseType_t xListWasEmpty;
 
 		/* Empty the command queue. */
 		prvProcessReceivedCommands();
+		feedDog();
 	}
 }
 /*-----------------------------------------------------------*/
@@ -628,9 +630,9 @@ PRIVILEGED_DATA static TickType_t xLastTime = ( TickType_t ) 0U; /*lint !e956 Va
 
 	xTimeNow = xTaskGetTickCount();
 
-	if( xTimeNow < xLastTime )
+	if( xTimeNow < xLastTime )//时间滴答数溢出或出现计数错误
 	{
-		prvSwitchTimerLists();
+		prvSwitchTimerLists();//
 		*pxTimerListsWereSwitched = pdTRUE;
 	}
 	else
