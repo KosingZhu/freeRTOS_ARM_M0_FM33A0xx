@@ -410,12 +410,13 @@ const HeapRegion_t *pxHeapRegion;
 
 		/* Ensure the heap region starts on a correctly aligned boundary. */
 		xAddress = ( size_t ) pxHeapRegion->pucStartAddress;
-		if( ( xAddress & portBYTE_ALIGNMENT_MASK ) != 0 )
+		if( ( xAddress & portBYTE_ALIGNMENT_MASK ) != 0 )/*按照对齐方式字节，去掉多余的不对齐字节*/
 		{
 			xAddress += ( portBYTE_ALIGNMENT - 1 );
 			xAddress &= ~portBYTE_ALIGNMENT_MASK;
 
 			/* Adjust the size for the bytes lost to alignment. */
+			/*减去地址对齐后需要裁剪的尺寸*/
 			xTotalRegionSize -= xAddress - ( size_t ) pxHeapRegion->pucStartAddress;
 		}
 
