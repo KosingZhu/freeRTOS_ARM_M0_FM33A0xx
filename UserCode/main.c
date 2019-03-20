@@ -53,6 +53,7 @@
 #include "event_groups.h"
 #include "stream_buffer.h"
 #include "message_buffer.h"
+#include "croutine.h"
 
 /* Demo application include. */
 #include "define_all.h"  
@@ -239,6 +240,7 @@ void vhandleTask(void *p)
 		//taskEXIT_CRITICAL();
 		//myprintf("catch a interupt:%d\n", (uint32)p);
 		//}
+		//LED_TOG;
 		//vTaskDelay(pdMS_TO_TICKS(100));
 	}
 	return;
@@ -281,6 +283,29 @@ void vPeriodicTask(void *p)
 	return;
 }
 
+void coFun(CoRoutineHandle_t coHandle, UBaseType_t arg)
+{
+	crSTART(coHandle);
+	for(;;)
+	{
+		LED_TOG;
+		crDELAY(coHandle, pdMS_TO_TICKS(300));
+	}
+	crEND();
+}
+
+
+void coFun1(CoRoutineHandle_t coHandle, UBaseType_t arg)
+{
+	crSTART(coHandle);
+	for(;;)
+	{
+		LED0_TOG;
+		crDELAY(coHandle, pdMS_TO_TICKS(300));
+	}
+	crEND();
+}
+
 
 
 
@@ -295,12 +320,18 @@ int main( void )
 	IWDT_Clr();
 	Init_System();			//系统初始化 
 
+
+	xCoRoutineCreate(coFun, 0, 0);
+	xCoRoutineCreate(coFun1, 0, 0);
+
+
+#if 0	
+
 	//semaphore = xSemaphoreCreateBinary();
 	//semaphore = xSemaphoreCreateCounting(5, 0);
 	//printMutex = xSemaphoreCreateMutex();
 	//xIntegerQueue = xQueueCreate( 100, sizeof(uint32_t) );
 	//xEventGroup = xEventGroupCreate();
-
 
 
 	//buff = xStreamBufferCreate(20, 0);
@@ -325,7 +356,8 @@ int main( void )
 		xTaskCreate(vPeriodicTask, "Periodic", 100, (void*)&mes, 3, NULL);
 	}
 	
-#if 0
+
+
 	xQueue1 = xQueueCreate(2, sizeof(char*));
 	xQueue2 = xQueueCreate(2, sizeof(char*));
 	xQueueSet = xQueueCreateSet(2*2);
@@ -429,6 +461,7 @@ void vApplicationIdleHook( void )
 	function, because it is the responsibility of the idle task to clean up
 	memory allocated by the kernel to any task that has since been deleted. */
 	uIDLERunCount++;
+	vCoRoutineSchedule();
 	return;
 }
 /*-----------------------------------------------------------*/

@@ -606,10 +606,12 @@ void IWDT_Init(void)
 
 void Init_IO(void)
 {
-	LED0_OFF;
+	//LED0_OFF;
 
 	OutputIO( LED0_GPIO, LED0_PIN, 0 );	 //led0
-	OutputIO( LED1_GPIO, LED1_PIN, 0 );
+	//OutputIO( LED1_GPIO, LED1_PIN, 0 );	
+	OutputIO( LED, LED_PIN, 0 );
+
 	//fout 输出系统时钟64分频
 //	GPIO_FOUTSEL_FOUTSEL_Set(GPIO_FOUTSEL_FOUTSEL_AHBCLKD64);
 //	AltFunIO( GPIOG, GPIO_Pin_6, ALTFUN_NORMAL );

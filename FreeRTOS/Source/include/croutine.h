@@ -172,6 +172,27 @@ BaseType_t xCoRoutineCreate( crCOROUTINE_CODE pxCoRoutineCode, UBaseType_t uxPri
  */
 void vCoRoutineSchedule( void );
 
+/*
+ * This function is intended for internal use by the co-routine macros only.
+ * The macro nature of the co-routine implementation requires that the
+ * prototype appears here.  The function should not be used by application
+ * writers.
+ *
+ * Removes the current co-routine from its ready list and places it in the
+ * appropriate delayed list.
+ */
+void vCoRoutineAddToDelayedList( TickType_t xTicksToDelay, List_t *pxEventList );
+
+/*
+ * This function is intended for internal use by the queue implementation only.
+ * The function should not be used by application writers.
+ *
+ * Removes the highest priority co-routine from the event list and places it in
+ * the pending ready list.
+ */
+BaseType_t xCoRoutineRemoveFromEventList( const List_t *pxEventList );
+
+
 /**
  * croutine. h
  * <pre>
@@ -693,28 +714,10 @@ void vCoRoutineSchedule( void );
  */
 #define crQUEUE_RECEIVE_FROM_ISR( pxQueue, pvBuffer, pxCoRoutineWoken ) xQueueCRReceiveFromISR( ( pxQueue ), ( pvBuffer ), ( pxCoRoutineWoken ) )
 
-/*
- * This function is intended for internal use by the co-routine macros only.
- * The macro nature of the co-routine implementation requires that the
- * prototype appears here.  The function should not be used by application
- * writers.
- *
- * Removes the current co-routine from its ready list and places it in the
- * appropriate delayed list.
- */
-void vCoRoutineAddToDelayedList( TickType_t xTicksToDelay, List_t *pxEventList );
-
-/*
- * This function is intended for internal use by the queue implementation only.
- * The function should not be used by application writers.
- *
- * Removes the highest priority co-routine from the event list and places it in
- * the pending ready list.
- */
-BaseType_t xCoRoutineRemoveFromEventList( const List_t *pxEventList );
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* CO_ROUTINE_H */
+
